@@ -16,29 +16,33 @@ import kotlinx.coroutines.*
 @Component
 class Executor(val restTemplate: RestTemplate) {
 
-    private val contracts = listOf("EBFgDvpUpAzpkCieyS6nC2HJquqpraScTmgQTzV6taQQ", "t5H68ncU3zh1KpYtdfY2VuKLzj5RdVjG7mKvJcTjPgn")
+    private val contracts = listOf(
+        "EBFgDvpUpAzpkCieyS6nC2HJquqpraScTmgQTzV6taQQ",
+        "t5H68ncU3zh1KpYtdfY2VuKLzj5RdVjG7mKvJcTjPgn"
+    )
     private val mapper = ObjectMapper()
 
-    @PostConstruct
-    fun init() {
-        for (contractId in contracts) {
-            File("data/$contractId").mkdir()
-        }
-    }
-
-    @Scheduled(fixedRate = 10000)
+    @Scheduled(fixedRate = 30000)
     fun execute() {
+
+        val date = DateTimeFormatter.ofPattern("dd.MM.yyyy - HH.mm.ss")
+            .format(ZonedDateTime.now(ZoneId.of("Europe/Moscow")))
+
+        File("data/$date").mkdir()
 
         runBlocking {
             for (contractId in contracts) {
                 launch(Dispatchers.Default) {
-                    val baseFolder = "data/$contractId/" + DateTimeFormatter.ofPattern("dd.MM.yyyy - HH.mm.ss")
-                        .format(ZonedDateTime.now(ZoneId.of("Europe/Moscow")))
+                    val baseFolder = "data/$date/$contractId"
                     File(baseFolder).mkdir()
 
                     transactionList(baseFolder)
                     uikList(baseFolder, contractId)
                 }
+            }
+
+            launch {
+                blockList("data/$date")
             }
         }
 
@@ -82,6 +86,28 @@ class Executor(val restTemplate: RestTemplate) {
         val response =
             restTemplate.exchange(url, HttpMethod.POST, entity, String::class.java).body ?: ""
         writeFile(baseFolder, "UIKs/list.json", response)
+    }
+
+    private fun blockList(baseFolder: String) {
+        File("$baseFolder/blocks").mkdir()
+        val url = "https://stat.vybory.gov.ru/api/blocks/search"
+        val pageSize = 20000
+        var page = 0
+        while (true) {
+            val entity = HttpEntity(
+                """
+                    {
+                        "page": $page,
+                        "pageSize": $pageSize
+                    }
+                 """.trimIndent(), getHeaders()
+            )
+            val response =
+                restTemplate.exchange(url, HttpMethod.POST, entity, String::class.java).body ?: ""
+            writeFile(baseFolder, "blocks/$page.json", response)
+            page++
+            if (mapper.readTree(response).get("data").get("results").size() < pageSize) break
+        }
     }
 
     private fun getResponse(url: String): String {
