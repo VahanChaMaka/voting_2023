@@ -1,7 +1,6 @@
 package election.monitoring.nizhny_novgorod_2023
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import jakarta.annotation.PostConstruct
 import org.springframework.http.*
 import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.stereotype.Component
