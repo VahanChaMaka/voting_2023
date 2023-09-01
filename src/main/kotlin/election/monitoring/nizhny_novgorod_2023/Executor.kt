@@ -21,7 +21,7 @@ class Executor(val restTemplate: RestTemplate) {
     )
     private val mapper = ObjectMapper()
 
-    @Scheduled(fixedRate = 30000)
+    @Scheduled(fixedRate = 600_000)
     fun execute() {
 
         val date = DateTimeFormatter.ofPattern("dd.MM.yyyy - HH.mm.ss")
